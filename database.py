@@ -10,22 +10,30 @@ def connect(func, *args, **kwargs):
     conn.close()
     return data
 
-def valid_date(cur, date: str, db_table: str) -> bool:
-    SQL = f"SELECT * FROM {db_table} WHERE DATE = \"{date}\";"
+def valid_date(cur, date: str) -> bool:
+    SQL = f"SELECT Date FROM Data WHERE Date = \"{date}\";"
     for i in cur.execute(SQL):
-        if i[0] == date:
+        
+        if str(i[0]) == date:
             return False
     return True
 
-def add_capital(cur, date: str, capital: str, override=False) -> bool:
-    if not connect(valid_date, date, 'Capital'): return False
-    SQL = f"INSERT INTO Capital VALUES (\"{date}\", {int(capital)});" 
-    cur.execute(SQL)
-    return True
 
-def add_profit(cur, date: str, profit: str, override=False) -> bool:
-    if not connect(valid_date, date, 'DailyProfit'): return False
-    SQL = f"INSERT INTO DailyProfit VALUES (\"{date}\", {int(profit)});" 
+def fetch_last_row(cur) -> None:
+    SQL = f"""SELECT * FROM Data ORDER BY Date DESC LIMIT 1;"""
     cur.execute(SQL)
-    return True
+    
+    return cur.fetchone()
+
+def add_record(cur, date: str, opening: float, result: float, closing: float, capital=None):
+    SQL = f"INSERT INTO Data VALUES ('{date}', {opening}, {result}, {capital}, {closing});" 
+    cur.execute(SQL)
+    
+
+
+def get_data(cur, start: str, end: str):
+    SQL = f'SELECT * FROM Data WHERE Date BETWEEN "{start}" AND "{end}";'
+    cur.execute(SQL)
+    return cur.fetchall()
+
 
