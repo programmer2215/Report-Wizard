@@ -36,4 +36,21 @@ def get_data(cur, start: str, end: str):
     cur.execute(SQL)
     return cur.fetchall()
 
+def get_closing(cur, start: str, end: str):
+    SQL = f'SELECT Date, Opening, Closing FROM Data WHERE Date BETWEEN "{start}" AND "{end}";'
+    cur.execute(SQL)
+    return cur.fetchall()
+
+
+def create_table(cur):
+    SQL = '''CREATE TABLE "Data" (
+	"Date"	TEXT NOT NULL UNIQUE,
+	"Opening"	REAL,
+	"Result"	REAL,
+	"AddedCapital"	REAL,
+	"Closing"	REAL,
+	PRIMARY KEY("Date")
+);'''
+    cur.execute(SQL)
+
 

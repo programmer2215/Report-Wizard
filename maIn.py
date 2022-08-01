@@ -1,10 +1,14 @@
+
 import tkinter as tk
 from tkinter import ttk
-from unittest import result
 from matplotlib import pyplot as plt
+from matplotlib.backends.backend_tkagg import (
+    FigureCanvasTkAgg, NavigationToolbar2Tk)
+# Implement the default Matplotlib key bindings.
+from matplotlib.backend_bases import key_press_handler
+from matplotlib.figure import Figure
 import tkcalendar as tkcal 
 from datetime import datetime
-import datetime as dt
 import tkinter.font as tk_font
 import database as db
 
@@ -28,8 +32,8 @@ status_lab.pack()
 
 
 style = ttk.Style()
-style.configure("Treeview", font=('Britannic', 10, 'bold'), rowheight=10, columnwidth=5)
-style.configure("Treeview.Heading", font=('Britannic' ,11, 'bold'))
+style.configure("Treeview", font=('Britannic', 12, 'bold'), columnwidth=5)
+style.configure("Treeview.Heading", font=('Britannic' ,13, 'bold'))
 
 # Tkinter Bug Work Around
 if root.getvar('tk_patchLevel')=='8.6.9': #and OS_Name=='nt':
@@ -90,7 +94,8 @@ def save_data():
     closing = opening + profit + capital
 
     db.connect(db.add_record, date, opening, profit, closing, capital) 
-    print(db.connect(db.fetch_last_row))
+    show_query()
+
 
 save_btn = ttk.Button(entry_frame, text="Save", command=save_data).grid(column=3, row=0, rowspan=2, padx=10)
 
@@ -113,9 +118,46 @@ to_cal = tkcal.DateEntry(query_frame, selectmode='day')
 to_cal_lab.grid(row=0, column=1, padx=20)
 to_cal.grid(row=1, column=1, padx=20)
 
+def plot_graph(start, end):
+    try:
+        plt.close()
+    except Exception as e:
+        print(e)
+
+    data = db.connect(db.get_data, start, end)
+    x = [datetime.strptime(i[0], '%Y%m%d').strftime('%d-%m-%y') for i in data]
+    y = [i[-1] for i in data]
+    for i, v in enumerate(y):
+        plt.text(i, v+100, "%d" %v, ha="center")
+    plt.plot(x, y)
+
+    opening = data[0][1]
+    if opening == 0.0:
+        opening = data[0][3]
+    with open("config.txt") as f:
+        percents = [float(x.strip()) / 100 for x in f.readlines()]
+        for i , percent in enumerate(percents):
+            target = opening + (percent * opening)
+            plt.axhline(target)
+            plt.text(len(y) - 1, target+2500, "%d" %target, ha="center")
+
+    plt.xlabel('Date')
+    plt.ylabel('Closing in Rs.')
+    plt.title(f'Daily Closing between {x[0]} and {x[-1]}')
+    plt.show()
+
 def show_query():
+    from_date = from_cal.get_date().strftime('%Y%m%d')
+    to_date = to_cal.get_date().strftime('%Y%m%d')
     for i in tv.get_children():
-            tv.delete(i)
+        tv.delete(i)
+    data = db.connect(db.get_data, from_date, to_date)
+    
+    for i,row in enumerate(data):
+        formatted_date = datetime.strptime(row[0], '%Y%m%d').strftime('%d-%m-%Y')
+        tv.insert(parent='', index=i, iid=i, values=(formatted_date, *row[1:]))
+    plot_graph(from_date, to_date)
+    
     
 
 query_btn = ttk.Button(query_frame, text="Show", command=show_query).grid(column=2, row=0, rowspan=2, padx=10)
@@ -125,11 +167,11 @@ result_frame.pack()
 
 tv = ttk.Treeview(
     result_frame, 
-    columns=(1, 2, 3, 4), 
+    columns=(1, 2, 3, 4, 5), 
     show='headings', 
     height=10
 )
-tv.grid(row=0, column=0)
+tv.grid(row=0, column=0, pady=10)
 
 tv.heading(1, text='Day')
 tv.column(1, minwidth=10, width=100) 
@@ -139,6 +181,8 @@ tv.heading(3, text='Result')
 tv.column(3, minwidth=10, width=100)
 tv.heading(4, text='Capital Add.')    
 tv.column(4, minwidth=10, width=100)
+tv.heading(5, text='Closing')    
+tv.column(5, minwidth=10, width=100)
 
 
 root.mainloop()
